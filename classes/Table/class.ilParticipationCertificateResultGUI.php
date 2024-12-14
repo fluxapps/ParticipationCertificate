@@ -115,7 +115,23 @@ class ilParticipationCertificateResultGUI
                 $this->toolbar->addButtonInstance($b_print);
             }
         }
-
+        $target_ref = 0;
+        if ($cert_access->isSelfPrintEnabled() and !$cert_access->hasCurrentUserPrintAccess()) {
+			$global_config_sets = ilParticipationCertificateConfig::where(array("config_type"=>3, "global_config_id" => 0 ))->orderBy('order_by')->get();
+			foreach ($global_config_sets as $config) {
+				if ($config->getConfigKey() == "true_name_helper") {
+					$target_ref=$config->getConfigValue();
+				}
+			}
+            $this->tpl->setOnScreenMessage('failure',$this->pl->txt('noname_noprint'), true);
+			if (is_numeric($target_ref) and ($target_ref > 0) and (ilObject::_lookupType(ilObject::_lookupObjectId($target_ref),false) == 'xudf')) { 
+				$msgurl= ' <a href=./ilias.php?baseClass=ilObjPluginDispatchGUI&cmd=forward&ref_id=' . $target_ref . '>' .  $this->pl->txt('helper_name') . '</a>';
+				$msgadd= $this->pl->txt('helper_action_pre') . $msgurl . $this->pl->txt('helper_action_post');
+                $this->tpl->setOnScreenMessage('info',$msgadd, true);
+				//Variants sendQuestion, send Info or unified Failure (with some codechange). two same not possible
+				}
+			}
+        
         $this->initTable();
 
         $this->tpl->setContent($this->table->getHTML());
@@ -162,8 +178,12 @@ class ilParticipationCertificateResultGUI
     {
         $cert_access = new ilParticipationCertificateAccess($_GET['ref_id']);
         if ($cert_access->hasCurrentUserPrintAccess()) {
-            $ementor = $_GET['ementor'];
-            $usr_id = $_GET['usr_id'];
+            if ($_GET['ementor'] == 'true') {
+                $ementor = true;
+                } else {
+                $ementor = false;
+                }
+            $usr_id[] = $_GET['usr_id'];
             $twigParser = new ilParticipationCertificateTwigParser($this->groupRefId, array(), $usr_id, $ementor,
                 false);
             $twigParser->parseData();
@@ -181,9 +201,14 @@ class ilParticipationCertificateResultGUI
                 $this->tpl->setOnScreenMessage('failure',$this->lng->txt('no_records_selected'), true);
                 $this->ctrl->redirect($this, self::CMD_CONTENT);
             }
-            $usr_id = $_POST['record_ids'];
-            $twigParser = new ilParticipationCertificateTwigParser($this->groupRefId, array(), $usr_id, true, false,
-                false);
+            $usr_ids = $_POST['record_ids'];
+            if (!is_array($usr_ids)) {
+                $usr_id[] = $usr_ids;
+            } else {
+                $usr_id = $usr_ids;
+            }
+            $twigParser = new ilParticipationCertificateTwigParser($this->groupRefId, array(), (array) $usr_id, true, false);
+                
             $twigParser->parseData();
         } else {
             $this->tpl->setOnScreenMessage('failure',$this->lng->txt('no_permission'), true);
@@ -200,9 +225,13 @@ class ilParticipationCertificateResultGUI
                 $this->ctrl->redirect($this, self::CMD_CONTENT);
             }
 
-            $usr_id = $_POST['record_ids'];
-            $twigParser = new ilParticipationCertificateTwigParser($this->groupRefId, array(), $usr_id, false, false,
-                false);
+            $usr_ids = $_POST['record_ids'];
+            if (!is_array($usr_ids)) {
+                $usr_id[] = $usr_ids;
+            } else {
+                $usr_id = $usr_ids;
+            }
+            $twigParser = new ilParticipationCertificateTwigParser($this->groupRefId, array(), $usr_id, false, false);
             $twigParser->parseData();
         } else {
             $this->tpl->setOnScreenMessage('failure',$this->lng->txt('no_permission'), true);

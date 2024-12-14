@@ -1,14 +1,17 @@
 <?php
 use srag\Plugins\UserDefaults\UserSearch\usrdefObj;
+use SRAG\ILIAS\Plugins\LearningObjectiveSuggestions\Config;
+use SRAG\ILIAS\Plugins\LearningObjectiveSuggestions\Config\ConfigProvider;
 
 class ilCrsInitialTestStates {
 
 	/**
 	 * @param array $arr_usr_ids
-	 *
+	 * @param int crsRefId (defaults to 0=
+  	 *
 	 * @return ilCrsInitialTestState[]
 	 */
-	public static function getData(array $arr_usr_ids = array()): array
+	public static function getData(array $arr_usr_ids = array(), int $crsRefId = 0): array
     {
 		global $DIC;
 		$ilDB = $DIC->database();
@@ -26,7 +29,9 @@ class ilCrsInitialTestStates {
 			$crsitst_state->setCrsitestItestTries($row['crsitest_itest_tries']);
 			$crsitst_state->setCrsitestItestSubmitted($row['crsitest_itest_submitted']);
 
-			$crsitst_data[$row['crsitest_usr_id']] = $crsitst_state;
+			if (( $crsRefId == 0 ) || ( $crsRefId == (int) $row['crsitest_crs_ref_id'] )) {
+				$crsitst_data[$row['crsitest_usr_id']] = $crsitst_state;
+			}
 		}
 
 		return $crsitst_data;
@@ -36,6 +41,8 @@ class ilCrsInitialTestStates {
     {
 		global $DIC;
 		$ilDB = $DIC->database();
+	        $course_configs = new ConfigProvider();
+	        $arr_malok_ids = $course_configs->getCourseRefIds();
 		$select = "SELECT test_act.user_fi as crsitest_usr_id,
 					crs_obj.obj_id as crsitest_crs_obj_id,
 					crs_obj.title as crsitest_crs_title,
@@ -53,7 +60,7 @@ class ilCrsInitialTestStates {
 					inner join " . usrdefObj::TABLE_NAME . " as itest_obj on itest_obj.obj_id = itest_ref.obj_id
 					inner join tst_tests as test on test.obj_fi = itest_obj.obj_id
 					inner join tst_active as test_act on test_act.test_fi = test.test_id
-					where loc_settings.itest is not null AND " . $ilDB->in('test_act.user_fi', $arr_usr_ids, false, 'integer');
+					where loc_settings.itest is not null AND " . $ilDB->in('crs_ref.ref_id', $arr_malok_ids, false, 'integer') . " AND " . $ilDB->in('test_act.user_fi', $arr_usr_ids, false, 'integer');
 
 		return $select;
 	}
